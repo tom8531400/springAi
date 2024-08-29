@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.example.springai01chat.mapper.UserMapper">
+    <resultMap id="MyEntityResultMap" type="com.example.springai01chat.vo.UserVo">
+        <result column="phone_number" property="phoneNumber" jdbcType="VARCHAR"/>
+        <result column="last_login_time" property="lastLoginTime" jdbcType="TIMESTAMP"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_by" property="updatedBy" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="findUserByUserName" parameterType="String" resultMap="MyEntityResultMap">
+        SELECT *
+        FROM Debt_Consolidation.user
+        WHERE username = #{userName}
+    </select>
+
+    <insert id="insertUser" flushCache="true">
+        INSERT INTO Debt_Consolidation.user(name, username, password,
+                                            age, gender, email, city, phone_number, status,
+                                            created_at, notes)
+        VALUES (#{registerUserDto.name}, #{registerUserDto.userName}, #{registerUserDto.password},
+                #{registerUserDto.age}, #{registerUserDto.gender},
+                #{registerUserDto.email},
+                #{registerUserDto.city}, #{registerUserDto.phoneNumber}, 1, NOW(),
+                #{registerUserDto.notes})
+    </insert>
+
+
+</mapper>

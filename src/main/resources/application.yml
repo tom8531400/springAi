@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: spring-ai-01-chat
+  datasource:
+    url: jdbc:mysql://localhost:3306/Debt_Consolidation
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: 1234
+
+  ai:
+    openai:
+      api-key: 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
+      base-url: https://api.openai.com/
+
+mybatis:
+  mapper-locations: classpath:/com/example/springtext/mapper/*.xml
