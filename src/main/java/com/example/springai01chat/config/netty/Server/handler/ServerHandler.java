@@ -4,6 +4,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,7 +14,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
 @Log4j2
-public class ServerHandler extends SimpleChannelInboundHandler<String> {
+public class ServerHandler extends SimpleChannelInboundHandler<WebSocketFrame> {
     private static DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private static final String UDPMESSAGE = "現在時間: " + dateFormat.format(System.currentTimeMillis());
     private static final String UDPMESSAGE2 = "歡迎來到聊天室~~";
@@ -33,8 +35,12 @@ public class ServerHandler extends SimpleChannelInboundHandler<String> {
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, String msg) throws Exception {
-        log.info("接收客戶{} 消息: {}",ctx.channel().remoteAddress(), msg);
+    protected void channelRead0(ChannelHandlerContext ctx, WebSocketFrame msg) throws Exception {
+        if (msg instanceof TextWebSocketFrame) {
+            String request = ((TextWebSocketFrame) msg).text();
+            System.out.println("Received message: " + request);
+            ctx.channel().writeAndFlush(new TextWebSocketFrame("Server response: " + request));
+        }
     }
 
     @Override

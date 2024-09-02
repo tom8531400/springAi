@@ -5,10 +5,10 @@ import com.example.springai01chat.dto.LoginUserDto;
 import com.example.springai01chat.dto.RegisterUserDto;
 import com.example.springai01chat.mapper.UserMapper;
 import com.example.springai01chat.service.UserService;
-import com.example.springai01chat.util.PasswordUtils;
 import com.example.springai01chat.vo.UserVo;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Log4j2
@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
     @Autowired
     private UserMapper userMapper;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Override
     public Boolean saveUser(RegisterUserDto registerUserDto) {
@@ -28,7 +30,8 @@ public class UserServiceImpl implements UserService {
         }
         log.info("此帳號{} 尚未被註冊，進行註冊", userName);
         String password = registerUserDto.getPassword();
-        registerUserDto.setPassword(PasswordUtils.makePassword(password));
+        String encode = passwordEncoder.encode(password);
+        registerUserDto.setPassword(encode);
         registerUserDto.setUserId("USER-" + RandomUtil.randomString(10));
         return userMapper.insertUser(registerUserDto) == 1;
     }
@@ -49,11 +52,9 @@ public class UserServiceImpl implements UserService {
         if (user != null) {
             log.info("此帳號: {}已被註冊過", userName);
             String password = loginUser.getPassword();
-            boolean result = PasswordUtils.passwordValidat(password, user.getPassword());
+            boolean result = passwordEncoder.matches(password, user.getPassword());
             return result ? user : null;
         }
         return null;
     }
-
-
 }

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+        }
+
+        .header-buttons {
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 1px 10px rgba(0,0,0,0.3);
+        }
+
+        .header-buttons button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .header-buttons button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .header-buttons .btn-exit {
+            background: linear-gradient(135deg, #ff4e50 0%, #f9d423 100%);
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.3);
+            overflow-y: hidden;
+        }
+
+        .chat-box {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .input-group input:focus {
+            background-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0px 4px 8px rgba(255, 255, 255, 0.2);
+        }
+
+        .input-group button {
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-left: 10px;
+        }
+
+        .input-group button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .message {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .message.sent {
+            background-color: #56ab2f;
+            color: #fff;
+            align-self: flex-end;
+        }
+
+        .message.received {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            align-self: flex-start;
+        }
+    </style>
+</head>
+<body>
+<div class="header-buttons">
+    <button class="btn btn-enter" id="enterChat">进入聊天</button>
+    <button class="btn btn-exit" id="exitChat">离开聊天</button>
+</div>
+<div class="chat-container">
+    <div class="chat-box" id="chatBox">
+        <!-- Chat messages will be displayed here -->
+    </div>
+    <div class="input-group">
+        <input type="text" id="messageInput" placeholder="Type a message..." required>
+        <button id="sendButton">Send</button>
+    </div>
+</div>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function () {
+        const chatBox = $('#chatBox');
+        const messageInput = $('#messageInput');
+        const sendButton = $('#sendButton');
+        const enterChat = $('#enterChat');
+        const exitChat = $('#exitChat');
+        let socket = null;
+
+        function initializeWebSocket() {
+            if (socket) {
+                socket.close();
+            }
+            socket = new WebSocket('ws://localhost:8080/ws');
+
+            socket.onmessage = function(event) {
+                chatBox.append(`<div class="message received">${event.data}</div>`);
+                chatBox.scrollTop(chatBox[0].scrollHeight);
+            };
+
+            socket.onopen = function() {
+                console.log('WebSocket connection established');
+            };
+
+            socket.onclose = function() {
+                console.log('WebSocket connection closed');
+            };
+
+            socket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        enterChat.on('click', function () {
+            initializeWebSocket();
+        });
+
+        exitChat.on('click', function () {
+            if (socket) {
+                socket.close();
+            }
+            console.log('Exiting chat...');
+        });
+
+        sendButton.on('click', function () {
+            const message = messageInput.val();
+            if (message.trim() && socket) {
+                chatBox.append(`<div class="message sent">${message}</div>`);
+                messageInput.val('');
+                chatBox.scrollTop(chatBox[0].scrollHeight);
+                socket.send(message);
+            }
+        });
+
+        messageInput.on('keypress', function (e) {
+            if (e.which === 13) {
+                e.preventDefault();
+                sendButton.click();
+            }
+        });
+    });
+</script>
+</body>
+</html>

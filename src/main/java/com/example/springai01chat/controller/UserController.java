@@ -27,26 +27,31 @@ public class UserController {
     @Autowired
     private OpenAiChatModel openAiChatModel;
 
-    /**
-     * 用戶登入
-     *
-     * @param loginUser 帳號密碼
-     * @return 是否成功登入
-     */
-    @RequestMapping(value = "/checkAccountAvailability", method = RequestMethod.POST)
-    public ApiResponse<UserVo> checkAccountAvailability(@Valid @RequestBody LoginUserDto loginUser) {
-        log.info("用戶輸入登入訊息: {}", loginUser);
-        try {
-            UserVo userVo = userService.checkAccount(loginUser);
-            if (userVo != null) {
-                return ApiResponse.success(HttpStatus.OK.value(), userVo);
-            }
-            return ApiResponse.failure(HttpStatus.BAD_REQUEST.value(), ExceptionStatus.error004.getErrorMessage());
-        } catch (Exception ex) {
-            log.info("用戶登入時發生錯誤: {}", ex.getMessage());
-            return ApiResponse.failure(HttpStatus.INTERNAL_SERVER_ERROR.value(), ExceptionStatus.error003.getErrorMessage());
-        }
+    @RequestMapping(value = "/login",method = RequestMethod.GET)
+    public String show(){
+        return "login";
     }
+
+//    /**
+//     * 用戶登入
+//     *
+//     * @param loginUser 帳號密碼
+//     * @return 是否成功登入
+//     */
+//    @RequestMapping(value = "/checkAccountAvailability", method = RequestMethod.POST)
+//    public ApiResponse<UserVo> checkAccountAvailability(@Valid @RequestBody LoginUserDto loginUser) {
+//        log.info("用戶輸入登入訊息: {}", loginUser);
+//        try {
+//            UserVo userVo = userService.checkAccount(loginUser);
+//            if (userVo != null) {
+//                return ApiResponse.success(HttpStatus.OK.value(), userVo);
+//            }
+//            return ApiResponse.failure(HttpStatus.BAD_REQUEST.value(), ExceptionStatus.error004.getErrorMessage());
+//        } catch (Exception ex) {
+//            log.info("用戶登入時發生錯誤: {}", ex.getMessage());
+//            return ApiResponse.failure(HttpStatus.INTERNAL_SERVER_ERROR.value(), ExceptionStatus.error003.getErrorMessage());
+//        }
+//    }
 
     /**
      * 用戶註冊

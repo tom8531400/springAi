@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ask a Question</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            font-size: 18px;
+            display: block;
+            margin-bottom: 10px;
+            text-align: left;
+            color: #fff;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .input-group input:focus {
+            background-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0px 4px 8px rgba(255, 255, 255, 0.2);
+        }
+
+        .input-group button {
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+        }
+
+        .input-group button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .input-group button:active {
+            transform: translateY(0);
+            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .response-box {
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.2);
+            font-size: 1.2rem;
+            color: #fff;
+            min-height: 100px;
+            margin-top: 20px;
+            line-height: 1.5;
+            display: none;
+            animation: fadeIn 1s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>請問問題</h2>
+    <form id="queryForm">
+        <div class="input-group">
+            <label for="question">你的問題:</label>
+            <input type="text" id="question" name="question" required>
+        </div>
+        <div class="input-group">
+            <button type="submit" class="btn btn-submit">送出</button>
+        </div>
+    </form>
+    <div class="response-box" id="responseBox">
+        <!-- AI's response will be displayed here -->
+    </div>
+    <div class="input-group">
+        <button type="button" class="btn btn-submit" id="sendButton">聊天</button>
+    </div>
+</div>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function () {
+        const responseBox = $('#responseBox');
+        const sendButton = $('#sendButton');
+
+        sendButton.on('click', function () {
+            window.location.href = 'message.html';
+        });
+
+        $('#queryForm').on('submit', function (event) {
+            event.preventDefault();
+
+            const question = $('#question').val();
+
+            $.ajax({
+                url: '/api/chat',
+                method: 'GET',
+                data: { question: question },
+                success: function (response) {
+                    responseBox.text(response).fadeIn();
+                },
+                error: function (xhr, status, error) {
+                    console.error('There was a problem with the AJAX request:', error);
+                    responseBox.text('An error occurred. Please try again.').fadeIn();
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>
