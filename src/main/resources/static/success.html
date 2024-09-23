@@ -134,6 +134,31 @@
         .audio-player {
             margin-top: 20px;
         }
+
+        .box-container {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .box {
+            width: 100px;
+            height: 100px;
+            border: 2px solid #fff;
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #fff;
+            transition: background-color 0.3s ease;
+        }
+
+        .box.active {
+            background-color: #4caf50;
+        }
     </style>
 </head>
 <body>
@@ -162,6 +187,10 @@
         <button type="button" class="btn btn-submit" id="textToAudioButton">文本轉聲音</button>
     </div>
 
+    <div class="input-group">
+        <button type="button" class="btn btn-submit" id="classifyButton">辨識</button>
+    </div>
+
     <div class="drop-zone" id="dropZone">
         將檔案拖放到此處或點擊以上傳
     </div>
@@ -175,6 +204,12 @@
             <source id="audioSource" src="" type="audio/mpeg">
             你的瀏覽器不支持音頻元素。
         </audio>
+    </div>
+
+    <div class="box-container">
+        <div class="box" id="box3">食物類</div>
+        <div class="box" id="box1">汽車類</div>
+        <div class="box" id="box2">動物類</div>
     </div>
 </div>
 
@@ -218,22 +253,18 @@
 
             eventSource.onerror = function (event) {
                 console.error('Stream connection failed:', event);
-                responseBox.text('流式連接失敗。請再試一次。').fadeIn();
+                responseBox.text('流式傳輸發生錯誤。').fadeIn();
                 eventSource.close();
             };
         });
 
         $('#imageButton').on('click', function () {
-            const question = $('#question').val();
-
             $.ajax({
                 url: '/api/image',
                 method: 'GET',
-                data: {question: question},
                 success: function (response) {
                     responseBox.empty();
-                    const image = $('<img>').attr('src', response);
-                    responseBox.append(image);
+                    $('<img>').attr('src', response.imageUrl).appendTo(responseBox);
                 },
                 error: function (xhr, status, error) {
                     console.error('There was a problem with the AJAX request:', error);
@@ -243,80 +274,59 @@
         });
 
         $('#audioToTextButton').on('click', function () {
-            if (selectedFile) {
-                const formData = new FormData();
-                formData.append('file', selectedFile);
-
-                $.ajax({
-                    url: '/api/audioTotext',
-                    method: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function (response) {
-                        responseBox.text(response).fadeIn();
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('There was a problem with the AJAX request:', error);
-                        responseBox.text('發生錯誤。請再試一次。').fadeIn();
-                    }
-                });
-            } else {
-                alert('請先上傳音頻文件。');
-            }
+            $.ajax({
+                url: '/api/audio-to-text',
+                method: 'POST',
+                data: selectedFile,
+                processData: false,
+                contentType: false,
+                success: function (response) {
+                    responseBox.text(response.text).fadeIn();
+                },
+                error: function (xhr, status, error) {
+                    console.error('There was a problem with the AJAX request:', error);
+                    responseBox.text('發生錯誤。請再試一次。').fadeIn();
+                }
+            });
         });
 
         $('#textToAudioButton').on('click', function () {
-            const question = $('#question').val();
+            const text = $('#question').val();
+            $.ajax({
+                url: '/api/text-to-audio',
+                method: 'POST',
+                data: JSON.stringify({text: text}),
+                contentType: 'application/json',
+                success: function (response) {
+                    $('#audioSource').attr('src', response.audioUrl);
+                    audioPlayer.load();
+                    audioPlayer.play();
+                },
+                error: function (xhr, status, error) {
+                    console.error('There was a problem with the AJAX request:', error);
+                }
+            });
+        });
 
-            if (question !== '') {
-                // 如果有輸入文本，直接傳遞文本
-                $.ajax({
-                    url: '/api/textToaudio',
-                    method: 'POST',
-                    data: { text: question }, // 使用 application/x-www-form-urlencoded 格式傳遞
-                    xhrFields: {
-                        responseType: 'blob' // 用於接收二進制數據
-                    },
-                    success: function (response) {
-                        const audioUrl = URL.createObjectURL(response);
-                        const audioPlayer = $('#audioPlayer')[0];
-                        audioPlayer.src = audioUrl;
-                        audioPlayer.load();
-                        audioPlayer.play();
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('There was a problem with the AJAX request:', error);
-                    }
-                });
-            } else if (selectedFile) {
-                // 如果沒有文本但有文件，則使用 FormData 上傳文件
-                const formData = new FormData();
-                formData.append('file', selectedFile);
+        $('#classifyButton').on('click', function () {
+            const question = $('#question').val(); // Ensure question is properly defined
 
-                $.ajax({
-                    url: '/api/textToaudio',
-                    method: 'POST',
-                    data: formData, // 使用 FormData 傳遞文件
-                    processData: false, // 避免 jQuery 自動處理數據
-                    contentType: false, // 保持默認的 Content-Type，讓瀏覽器來設置
-                    xhrFields: {
-                        responseType: 'blob' // 用於接收二進制數據
-                    },
-                    success: function (response) {
-                        const audioUrl = URL.createObjectURL(response);
-                        const audioPlayer = $('#audioPlayer')[0];
-                        audioPlayer.src = audioUrl;
-                        audioPlayer.load();
-                        audioPlayer.play();
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('There was a problem with the AJAX request:', error);
+            $.ajax({
+                url: '/api/getEmbedding3',
+                method: 'GET',
+                data: {text1: question},
+                success: function (response) {
+                    $('.box').removeClass('active');
+
+                    // Add 'active' class to the relevant box
+                    if (response) {
+                        $(`#box${response}`).addClass('active');
                     }
-                });
-            } else {
-                console.error('No input provided');
-            }
+                },
+                error: function (xhr, status, error) {
+                    console.error('There was a problem with the AJAX request:', error);
+                }
+            });
         });
 
         dropZone.on('dragover', function (event) {
@@ -324,8 +334,7 @@
             dropZone.addClass('hover');
         });
 
-        dropZone.on('dragleave', function (event) {
-            event.preventDefault();
+        dropZone.on('dragleave', function () {
             dropZone.removeClass('hover');
         });
 
@@ -333,17 +342,13 @@
             event.preventDefault();
             dropZone.removeClass('hover');
             selectedFile = event.originalEvent.dataTransfer.files[0];
-            if (selectedFile) {
-                alert(`檔案 ${selectedFile.name} 已選擇`);
-            }
+            dropZone.text(selectedFile.name);
         });
 
         dropZone.on('click', function () {
             $('<input type="file">').on('change', function (event) {
                 selectedFile = event.target.files[0];
-                if (selectedFile) {
-                    alert(`檔案 ${selectedFile.name} 已選擇`);
-                }
+                dropZone.text(selectedFile.name);
             }).click();
         });
     });

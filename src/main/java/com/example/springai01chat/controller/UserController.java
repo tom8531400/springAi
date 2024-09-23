@@ -1,11 +1,9 @@
 package com.example.springai01chat.controller;
 
-import com.example.springai01chat.dto.LoginUserDto;
 import com.example.springai01chat.dto.RegisterUserDto;
 import com.example.springai01chat.response.ApiResponse;
 import com.example.springai01chat.response.status.ExceptionStatus;
 import com.example.springai01chat.service.UserService;
-import com.example.springai01chat.vo.UserVo;
 import jakarta.validation.Valid;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -27,8 +25,8 @@ public class UserController {
     @Autowired
     private OpenAiChatModel openAiChatModel;
 
-    @RequestMapping(value = "/login",method = RequestMethod.GET)
-    public String show(){
+    @RequestMapping(value = "/login", method = RequestMethod.GET)
+    public String show() {
         return "login";
     }
 

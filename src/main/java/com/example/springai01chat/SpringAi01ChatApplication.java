@@ -1,6 +1,5 @@
 package com.example.springai01chat;
 
-import com.example.springai01chat.config.netty.NettyConfig;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

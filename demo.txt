@@ -1,0 +1,230 @@
+四方金流串接流程
+12st October 2022          Editor : Alex Hsiao
+用戶測試平台與商戶後台
+國內版資訊
+後台網址：DEV 後台，UAT後台，正式後台
+平台網址：UAT測試
+Project：bankApi
+IP :  211.75.184.193 (本地,DEV)，211.75.184.198 (UAT)， 18.162.178.234  (正式)
+國際版資訊
+後台網址：UAT後台，正式後台   平台網址 : UAT測試
+IP : 211.75.184.193 (本地,UAT)，13.212.203.106 (正式)，13.212.20.46 (正式)，54.254.184.65 (正式)
+Project：gbankApi
+前導圖示
+
+流程敘述
+1.串接拉群
+盤口與上游合作金流來往，四方金流提供技術支援
+串接支付/代付、查單/查餘額/回調等功能
+在國際或國內的四方金流TG群，由客服發起[xxx]商戶欲串接某某代付/支付請求，指派任務後在[群組表示拉群]
+屆時會加入一個有上游盤口在的群組，在那邊跟上游串接API相關內容
+切勿參與與技術無關事項討論或是決定
+
+
+
+
+2. 添加金流商的對接資訊到雲端
+
+在金流商戶內添加(xxx支付/代付)資料夾 , 將對接的文件與商戶資訊(密鑰 , 後台帳密)儲存下來
+3.實做對接內容
+
+詳細的實做內容在 "動手實做" 的部分(在此省略)
+4.添加IP與本地測試
+實做完要串接的API後，在群內詢問對方是否需要添加我方IP白名單(211.75.184.193)
+使我們得以在本地端跑Unit Test測試實做內容是否呈現想要的結果，
+如果餘額不足可以通知上游加一點測試的金額（測試上單都以最低金額嘗試上單）
+之後上正式環境前，須通知上游方拔掉本地與UAT測試的白名單資料，只須添加正式環境的IP
+本地端測試若沒有問題後，將Code推上UAT環境測試回調。
+
+(目前本地IP 已從 61.220.44.217 改為 211.75.184.193 ) 2023/05/02
+
+5.UAT環境測試
+
+在UAT的商戶後台新增欲串接的渠道，並測試上單與下單是否正常無誤 ( 有時可能只串接代付或支付其中一種 )，如有以上情況僅此需要測試其中一種，若送單皆沒問題，請上游更新訂單的狀態查看是否有收到回調內容
+
+在UAT環境後台測試時，若有非預期情況發生，可以透過Log去查找錯誤訊息，回調後須在後台查看日誌以比對回調內容訂單狀態是否在預期內，並雙重比對Code裡面的ResponsCode對應的訂單狀態是否一致，一切都沒問題後至少請一人幫你Code Review。
+
+6.如何查看Log
+
+Open cmd -> ssh root@192.168.1.213 ( ex: 欲查看國際UAT環境的Log )
+       -> password: 1i6u86j;3xj4     -> cd /var/log   -> c
+
+
+
+
+7.壓版號
+Code review完後沒問題 , 若只是串接支付 , 則僅需要更新 trader 這包 project ,如果有串接代付則需更新 mgr , scheduler , trader 這三包 project
+
+Ex: 假設今天是2022/10/03 , 版本號為 R20221003v1.40.1 , 若今天已經有人更新版號了 , 則可以更新為 R20221003v1.40.2
+Commit message : all jar version R20221003v1.40.1 (有包含代付)
+Commit message :  trader jar version R20221003v1.40.1 (僅有支付)
+更新版號後 , 需在商戶後台的資訊確認版號是否有被更改
+
+
+
+
+後
+
+8.開通正式環境
+Code上正式環境之後 , 先請有權限的同仁 , 將之前你在本地端測試時打印出來的SQL , 更新到正式環境的DB上
+如果在測試時 , 有手動 Update 或 Insert 一些SQL的話也請保留下來 , 在更新到正式時一併加入
+新增完後到正式環境的商戶後台新增此次串接金流商的渠道資料 , 配置時初始狀態請設定為 ** 禁用 ** ( 正式環境操作要謹慎 , 按下確認前請多檢查幾次 ) ,
+新增後點擊刷新餘額按鈕 , 在正式環境的log上確認是否正常運行 ,正常運行後再請有權限已的同仁幫忙更新這個新增渠道的商戶名稱( ex: a501 ) ,
+一切確認沒問題後 , 即可截渠道的圖在群裡告知上線通知。
+
+動手實作
+範例: Good123 串接支付/代付
+代付
+1.路徑
+VendorWithdrawNotifyController 新增 good123Notify 方法 (for回調)
+xxpay-spring-common
+	L src/main/java/org.xxpay.common/withdraw
+		L 新增 good123
+			L 新增 Good123WithdrawMethod
+xxpay-trader
+	L src/test/java/org.xxpay.trader/withdraw
+		L 新增 Good123WithdrawMethodTest
+2.細節
+新增 Good123WithdrawMethod 需要去實做 WithdrawMethod 介面(可參考其他金流的做法)，以下是實做的方法需要注意的地方
+canSupport :  需查看是否返回 “return “GOOD123”.equals(catchId);”
+canDoQueryBalance :  若文件有提供查詢餘額接口，則“return true;”
+getBalance : 若串接時，上游文檔沒看到查詢餘額接口，則需要跟上游詢問下是否有提供查餘額接口(因有些文檔版本是舊的，上游沒及時更新)，須注意文件提供的單位為 元 or 分，因為在我們DB金額紀錄的單位為分，所以如果查詢餘額單位為元的話，需再換算成分的單位。
+
+execute :  代付送單時須注意，元分模式的轉換，withdrawOrder中amount的單位為:分，下圖的例子是在送單時，訂單要求的參數為元，這時候需要透過AmountUtil去轉換為元的例子
+
+api 請求時須注意上游文件發送的請求格式，是否與設定的post方法相符
+Ex : application/json
+Ex : application/x-www-form-urlencoded
+
+getOrder :  在執行MethodTest測試查單API時會額外再打一個 "不存在" 的訂單，這時候需紀錄上游回應的錯誤訊息，並抓取此訊息拋出 1401 ; Withdrawal channel timeout error: the order does not exist after verification 的錯誤訊息，撰寫時在判斷回應碼這邊去做處理
+
+
+取得查單回應後，查看訂單狀態碼，並撰寫ResponseCode的方法，使上游的訂單狀態得以去對應我方平台的訂單狀態
+
+由下圖ResponseCode的實做可以發現
+在實做面我方只需要去對應上游的狀態產出三種分別為支付中、支付完成、支付失敗的狀態，
+若上游有多種訂單狀態的status需詳細詢問訂單的狀態發生情況，若是以下類似 待審核/未處理/審核中/受理中 等等皆由 支付中 去對應，
+對應支付完成以及支付失敗的狀態也需特別詢問狀態是否會變成其他訂單狀態的情況，因為我們的系統不支援訂單狀態成功變失敗，失敗變成功的，所以收到回調後，會執行查單接口，如果查詢到的訂單是成功的我們平台就不會再對訂單做異動了
+若是其他特殊情況請與康哥討論
+
+checkNotifySign : 為回調驗簽(此部分完成後在UAT測試環境做測試)
+getThirdOrderSuccessCode : 需查看是否返回"return ResponseCode.SUCCESS.getCode();"
+
+3.測試
+新增 Good123WithdrawMethodTest 需要去繼承 AbstractWithdrawMethodTest 抽象類(可參考其他金流的做法)
+vendorName : 查看是否返回 return “Good123代付"
+catchId() : 查看是否返回 return “GOOD123"，大寫
+originationURL() : 查看是否返回 文件上的代付API URL
+queryURL() : 查看是否返回 文件上的查單API URL
+balanceURL() : 查看是否返回 文件上的查餘額API URL，若未提供查餘額方法則返回 null
+bankCodeMapping() : 查看上游是否有提供銀行對應的bankCode，若有則新增，無則return new LinkedHashMap<>(); (參考其他金流)
+supportCurrency() : 查看上游有支援哪種幣別 ( 國際版才需要 )
+vendorExtraParams() : 查看上游是否需要添加額外參數 , 若參數有使用到 channelExtra or channelMerchantName 則需要實做 , 沒有則不用實作
+
+執行Test測試前須知 : 在各個Test測試中有 insertTestData(dto) function，主要是將你的測試資料塞入DB環境，先塞入上游金流三方代付資料對應Table : t_withdraw_vendor，vendor中的catchId欄位通常是上游的縮寫，以上面的範例來說的話，catchId = " GOOD123 " ，這邊會再看到檢查商戶的判斷，通常在測試環境我們測試的商戶名稱通常為a100 or a099，所以在測試資料這邊的Merchant_ID可能為 a100 or a099，因為在正式環境中，執行這些API時，會先透過平台，平台這邊會需要去驗證商戶，商戶對應的Table : t_merchant。
+
+再來會去查看你的BankCodeMapping這邊主要就是去將三方(上游)對應的銀行代碼寫入我們的Table : t_withdraw_channel_bank，在塞入三方銀行資料時有可能會噴錯可以參考這裡的
+範例
+
+串接上游代付時，有些代付可能會需要去對應銀行的BankCode，在建單匹配通道時withdrawChannel的欄位thirdBankCode就是去儲存這個對應值的，t_withdraw_channel_bank中若有存入匹配的上游(withdrawVendorId)的話，這時候會根據你在測試平台輸入的bankName欄位去查找對應的bankInfo，如果有匹配成功的話，就會將找到的BankCode塞入thirdBankCode這個欄位，在execute送單的時候一併把參數送過去上游，上游才知道你是對應哪間銀行。
+autoPrintSQL() : 執行此Test時，須保存打印出來的SQL，之後上正式環境的時候需要
+
+autoQueryBalance() :
+executeOrder() : 執行Test時，若發生銀行名稱匹配錯誤，請檢查t_withdraw_channel_bank_code.BankName是否有 "XXX" 時，需手動下SQL，Insert欲增加的銀行資料進t_withdraw_channel_bank_code，測試時
+1 . 訊問上游發起訂單額度區間是多少(上生產時需要給預設值)。
+2. 詢問上游是否可以添加測試金額，讓我們建單、查單、回調測試，若上游表示不代墊則請盤口那邊充值單筆上單最低金額的3 ~ 5倍金額進去，若實在不行技術這邊確認代碼無誤，直接上生產驗收。
+3. 若上單需要驗證銀行卡請盤口提供一張真實卡做測試( 測試後請勿在其他金流商使用此卡 )
+queryOrder() : 執行此Test時，除了查詢上一筆訂單外，還會再送一筆不存在的訂單，這時候需要去記下上游跳出的錯誤訊息，新增getOrder對於訂單不存在的錯誤判斷 1401
+一起執行訂單與查單，查看上單的金額是否與查單金額一致
+順利的完成下單，查單，查餘額的測試後，推上UAT之前需要將一些測試資料刪除
+EX: THIRD_MERCHANTSIGN , PUBLIC_KEY , PRIVATE_KEY 清空
+
+註解Test相關的Annotation
+
+
+完成即可推上UAT環境測試CallBack。
+支付
+1.路徑
+NotifyPayController 新增 good123Pay 方法 (for回調)
+NotifyPayController
+xxpay-trader
+	L src/main/java/org.xxpay.trader/service/vendor
+		L 新增 good123
+			L 新增 Good123PayMethod
+xxpay-trader
+	L src/test/java/org.xxpay.trader/test/pay
+		L 新增 Good123PayMethodTest
+2.細節
+新增 Good123PayMethod 需要去繼承 AbstractPayVendorMethod抽象類 (可參考其他金流的做法)，以下是實做的方法需要注意的地方
+vendorCatchId():  需查看是否返回 return “GOOD123”;
+createOrderParams():  設置支付API 所需代入的參數，三方(上游)通道參數ThirdChannelCode有時候上游會需要代入ChannelCode去匹配通道，測試時可以參考此關係
+*需注意單位 元/分
+
+*如果有多個幣別可以創建一個 Map 再搭配 dto.getChannelCode() 使用
+(用渠道來區分幣別)
+需要建立新的渠道,詳情可參考測試部分的 channelCodeMapping() :  說明
+
+getPayUrl(): 取得支付方式，通常可以使用@CreateReponse介面可以去映射支付API的Response
+
+refreshOrderParams(): 設置查單API 所需代入的參數
+refreshOrderResult(): 取得查單回應，通常可以使用@QueryReponse介面可以去映射查單API的Response
+
+callback(): 回調參數，只需要接收參數去與Request做比對，不需要真的去驗簽，收到回調後會再次發送查單的API，去查看支付訂單是否成功才會決定訂單成功與否(此部分在UAT測試環境做測試)
+
+3.測試
+新增 Good123PayMethodTest 需要去繼承 AbstractPayMethodTest抽象類(可參考其他金流的做法)
+vendorName() : 查看是否返回 return “Good123支付"
+catchId() : 查看是否返回 return “GOOD123" ，大寫
+originationURL() : 查看是否返回 文件上的支付API URL
+queryURL() : 查看是否返回 文件上的支付查單API URL
+balanceURL() : 通常返回 null
+channelCodeMapping() : 查看支付時上游是否需提供渠道碼，在此設定thirdChannelCode，若上游沒提供渠道碼，在此也需要新增對應的支付通道，使四方金流得以對應到此上游支付，順便瞭解一下 t_vendor_channel 對應 t_channel 的關係
+
+渠道碼新增後須去三方金流支付渠道對應表新增串接的資訊https://docs.google.com/spreadsheets/d/1cCQbrC1Wj95Rcg3P4hLs0dqQkZS1CwtlN5cqWtA88VQ/edit#gid=1337962036
+vendorExtraParams() : 查看上游是否需要添加額外參數 , 若參數有使用到 thirdMerchantName 則需實做 , 沒有則不用實作
+
+
+執行Test測試前須知 : 在各個Test測試中有 insertTestData(dto) function，主要是將你的測試資料塞入DB環境，先塞入上游金流三方支付資料對應Table : t_vendor，同代付一樣要檢查商戶，再來會根據你輸入的channelCodeMapping去新增 t_vendor_channel，(若是需要新增t_channel四方金流的渠道需手動在此Table Insert新的channel資料且保留此SQL之後上正式環境一併新增，並到example/java/src/main/resources/static/images/index.html新增對應的新渠道)，之後在此商戶下創建一個對應此上游的帳號accountNew，可參考t_account_new，創建帳號後再根據此上游帳號跟四方渠道去新增一個新的帳號渠道，可參考t_account_channel。 (此部分說明的內容皆在 AbstractWithdrawMethodTest中可以看到)
+開始測試 依序執行以下的 Unit Test function 去測試所寫的代碼是否正確 :
+autoPrintSQL()
+executeOrder()
+queryOrder()
+
+autoPrintSQL() : 執行此Test時，須保存打印出來的SQL，之後上正式環境的時候需要
+
+executeOrder() : 執行此Test時，查看是否可以獲取支付鏈結或是其他支付方式
+queryOrder() : 比對單號是否正確(與executeOrder() 同時測 , 可以測到同一筆訂單 )
+本地測試完成即可推上UAT環境測試支付的回調，推上UAT一樣要將一些重要的測試資料清空以防機密資料外洩 ex: 密鑰等...，以及註解如同UnitTest的一些Annotation
+若有新增四方的支付渠道t_channel亦即需要更新以下測試平台的支付介面，這邊需要去手動打包demo.jar且更新UAT環境上的資料
+
+
+打包demo.jar，若沒看到grandle圖案可能是沒有配置環境請參考此連結
+
+安裝xftp或常用的文件傳輸工具以方便將檔案丟至UAT環境
+
+在UAT環境輸入此指令 /etc/init.d/demo restart 即可完成更新
+
+串接注意事項
+串接前先去公司內部Google雲端的四方金流建立金流商戶資料，國際與國內版有區分，新增商戶資料與ＡＰＩ文件。
+串接時金額的元分單位、以及訂單的狀態對應，切記檢查仔細。
+
+正式環境注意事項(＊＊正式還境小心操作)：
+1.請L2上正式版後確認版號：
+
+2.幫忙盤口新增渠道：參照UAT時的設定 ＊狀態選擇禁用等盤口自行設定
+
+3.如帶功能有包含餘額查詢需要進行測試 :
+查看 log 餘額查詢結果
+
+使用跳板機登入 LINUX主機連接：
+Outline ： ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTp3WVh1Nm5yY2RSZ1o@34.96.249.142:39784/?outline=1
+
+
+國內:
+ssh -i "/Users/sai/Desktop/VPNKEY/TW-SSH-02.pem" centos@18.162.152.229
+ssh -i "TW-SSH-02.pem" centos@10.20.10.201  四方金流國內版 Pay-Server
+ssh -i "TW-SSH-02.pem" centos@10.20.10.103 四方金流國內版 Pay-Mq+Redis
+
+國際：
+ssh -i "/Users/sai/Desktop/VPNKEY/TW-SSH-international.pem" centos@13.212.20.46 四方金流国际版(進第二台跳板)
+sudo ssh -i "TW-SSH-international.pem" centos@10.20.5.189 四方金流国际版

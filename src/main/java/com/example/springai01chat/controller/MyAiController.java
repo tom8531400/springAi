@@ -1,6 +1,7 @@
 package com.example.springai01chat.controller;
 
 import lombok.extern.log4j.Log4j2;
+import org.springframework.ai.embedding.*;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
 import org.springframework.ai.openai.*;
@@ -15,11 +16,14 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStreamReader;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Log4j2
 @RestController
@@ -35,6 +39,8 @@ public class MyAiController {
     private OpenAiAudioTranscriptionModel openAiAudioTranscriptionModel; // 語音文字轉換
     @Autowired
     private OpenAiAudioSpeechModel openAiAudioSpeechModel; // 文字轉語音
+    @Autowired
+    private OpenAiEmbeddingModel openAiEmbeddingModel; // 匹配文字
 
     /**
      * 文字聊天(同步 call)
@@ -182,4 +188,136 @@ public class MyAiController {
         }
         return stringBuilder.toString();
     }
+
+    @RequestMapping(value = "/getEmbedding1", method = RequestMethod.GET)
+    public EmbeddingResponse getEmbedding1(@RequestParam String text1) {
+        try {
+            List<String> data = new ArrayList<>();
+            data.add(text1);
+            EmbeddingOptions embeddingOptions = EmbeddingOptionsBuilder.builder()
+                    .withModel("text-embedding-ada-002") // 使用你指定的模型
+                    .build();
+            EmbeddingRequest request = new EmbeddingRequest(data, embeddingOptions);
+            return openAiEmbeddingModel.call(request);
+        } catch (Exception ex) {
+            log.error("調用 OpenAI 出現錯誤: {}", ex.getMessage(), ex);
+        }
+        return null;
+    }
+
+    @RequestMapping(value = "/getEmbedding2", method = RequestMethod.GET)
+    public Double getEmbedding2(@RequestParam String text1, @RequestParam String text2) {
+        try {
+            List<String> data = new ArrayList<>();
+            data.add(text1);
+            data.add(text2);
+            EmbeddingOptions embeddingOptions = EmbeddingOptionsBuilder.builder()
+                    .withModel("text-embedding-ada-002") // 使用你指定的模型
+                    .build();
+            EmbeddingRequest request = new EmbeddingRequest(data, embeddingOptions);
+            EmbeddingResponse response = openAiEmbeddingModel.call(request);
+
+            // 提取兩個文本的嵌入向量
+            List<Embedding> results = response.getResults();// 使用 getResults() 獲取嵌入向量列表
+            float[] embedding1 = results.get(0).getOutput();  // 第一個文本的嵌入
+            float[] embedding2 = results.get(1).getOutput();
+            // 計算兩個嵌入向量之間的相似度
+            return calculateCosineSimilarity(embedding1, embedding2);
+        } catch (Exception ex) {
+            log.error("調用 OpenAI 出現錯誤: {}", ex.getMessage(), ex);
+        }
+        return null;
+    }
+
+
+    @RequestMapping(value = "/getEmbedding3", method = RequestMethod.GET)
+    public String getEmbedding3(@RequestParam(value = "text1") String text1) {
+        try {
+            List<String> categories = new ArrayList<>();
+            categories.add("汽車類");
+            categories.add("動物類");
+            categories.add("食物類");
+
+
+            List<String> data = new ArrayList<>();
+            data.add(text1);
+            data.addAll(categories);
+
+            EmbeddingOptions embeddingOptions = EmbeddingOptionsBuilder.builder()
+                    .withModel("text-embedding-ada-002") // 使用你指定的模型
+                    .build();
+            EmbeddingRequest request = new EmbeddingRequest(data, embeddingOptions);
+            EmbeddingResponse response = openAiEmbeddingModel.call(request);
+
+            List<Embedding> results = response.getResults();
+            float[] embedding1 = results.get(0).getOutput();
+            float[] embedding2 = results.get(1).getOutput();
+            float[] embedding3 = results.get(2).getOutput();
+            float[] embedding4 = results.get(3).getOutput();
+
+            double car = calculateCosineSimilarity(embedding1, embedding2);
+            double animal = calculateCosineSimilarity(embedding1, embedding3);
+            double food = calculateCosineSimilarity(embedding1, embedding4);
+            String endType = "未知";
+            double max = Math.max(car, Math.max(animal, food));
+            if (max == car) {
+                endType = "1";
+            } else if (max == animal) {
+                endType = "2";
+            } else if (max == food) {
+                endType = "3";
+            }
+            return endType;
+        } catch (Exception ex) {
+            log.error("調用 OpenAI 出現錯誤: {}", ex.getMessage(), ex);
+        }
+        return null;
+    }
+
+    @RequestMapping(value = "/getEmbedding4", method = RequestMethod.GET)
+    public String getEmbedding4(@RequestParam(value = "text") String text) throws IOException {
+        double maxSimilarity = -1;
+        String mostSimilarText = null;
+        Path path = Paths.get("demo.txt");
+        List<String> list = Files.readAllLines(path);
+        list = list.stream().filter(o -> !"".equals(o)).collect(Collectors.toList());
+
+        List<String> fileList = new ArrayList<>(list);
+        fileList.add(0, text);
+
+        EmbeddingOptions embeddingOptions = EmbeddingOptionsBuilder.builder()
+                .withModel("text-embedding-ada-002") // 使用你指定的模型
+                .build();
+        EmbeddingRequest request = new EmbeddingRequest(fileList, embeddingOptions);
+        EmbeddingResponse response = openAiEmbeddingModel.call(request);
+
+        List<Embedding> results = response.getResults();
+        float[] textData = results.get(0).getOutput();
+        for (int i = 1; i < results.size(); i++) {
+            float[] temp = results.get(i).getOutput();
+            double d = calculateCosineSimilarity(textData, temp);
+            if (d > maxSimilarity) {
+                maxSimilarity = d;
+                mostSimilarText = fileList.get(i);
+                System.out.println(">>>>>>>>>>>>>>>>>>" + mostSimilarText);
+            }
+        }
+        return mostSimilarText;
+    }
+
+
+    // 計算餘弦相似度的方法
+    private double calculateCosineSimilarity(float[] vectorA, float[] vectorB) {
+        double dotProduct = 0.0;
+        double normA = 0.0;
+        double normB = 0.0;
+
+        for (int i = 0; i < vectorA.length; i++) {
+            dotProduct += vectorA[i] * vectorB[i];  // 點積
+            normA += Math.pow(vectorA[i], 2);       // 向量 A 的範數
+            normB += Math.pow(vectorB[i], 2);       // 向量 B 的範數
+        }
+        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));  // 餘弦相似度
+    }
+
 }

@@ -11,7 +11,6 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
@@ -23,7 +22,7 @@ public class NettyServer {
     }
 
     public void start() throws Exception {
-        log.info("netty服務器已啟動...");
+        //log.info("netty服務器已啟動...");
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workGroup = new NioEventLoopGroup();
         try {
@@ -36,15 +35,15 @@ public class NettyServer {
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             ChannelPipeline pipeline = socketChannel.pipeline();
                             pipeline.addLast(new StringDecoder())
-                            .addLast(new HttpServerCodec())
-                            .addLast(new HttpObjectAggregator(65536))
-                            .addLast(new HttpContentCompressor())
-                            .addLast(new WebSocketServerProtocolHandler("/ws"))
-                            .addLast(new ServerHandler());
+                                    .addLast(new HttpServerCodec())
+                                    .addLast(new HttpObjectAggregator(65536))
+                                    .addLast(new HttpContentCompressor())
+                                    .addLast(new WebSocketServerProtocolHandler("/ws"))
+                                    .addLast(new ServerHandler());
                         }
                     });
-            ChannelFuture channelFuture = serverBootstrap.bind(9111);
-//            channelFuture.channel().closeFuture().sync();
+            ChannelFuture channelFuture = serverBootstrap.bind(9111).sync();
+            channelFuture.channel().closeFuture().sync();
         } catch (Exception ex) {
             throw new Exception("連線失敗" + ex.getMessage());
         } finally {
