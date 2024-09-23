@@ -43,8 +43,8 @@ public class NettyServer {
                             .addLast(new ServerHandler());
                         }
                     });
-            ChannelFuture channelFuture = serverBootstrap.bind(9111).sync();
-            channelFuture.channel().closeFuture().sync();
+            ChannelFuture channelFuture = serverBootstrap.bind(9111);
+//            channelFuture.channel().closeFuture().sync();
         } catch (Exception ex) {
             throw new Exception("連線失敗" + ex.getMessage());
         } finally {
